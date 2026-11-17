@@ -1,0 +1,40 @@
+name: Build VibeTune (Windows)
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -B build -G "Visual Studio 17 2022" -A x64
+
+      - name: Build plugin + standalone
+        run: cmake --build build --config Release --parallel
+
+      - name: Install Inno Setup (if missing)
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "C:\Program Files (x86)\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup -y --no-progress
+          }
+
+      - name: Build installer
+        shell: pwsh
+        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" Installer\VibeTune.iss'
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: VibeTune-Setup
+          path: Installer/Output/VibeTune-Setup.exe
+
+      - name: Upload raw VST3 (no installer)
+        uses: actions/upload-artifact@v4
+        with:
+          name: VibeTune-VST3
+          path: build/VibeTune_artefacts/Release/VST3/VibeTune.vst3
